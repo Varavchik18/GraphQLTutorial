@@ -11,6 +11,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using GraphQL.Server.Ui.Voyager;
+using CommanderGQL.GraphQL.Platforms;
+using CommanderGQL.GraphQL.Commands;
 
 namespace CommanderGQL
 {
@@ -26,13 +29,20 @@ namespace CommanderGQL
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddDbContext<AppDbContext>(
+            services.AddPooledDbContextFactory<AppDbContext>(
                 opt => opt.UseSqlServer(
                     Configuration.GetConnectionString("CommandConStr")));
 
             services
                 .AddGraphQLServer()
-                .AddQueryType<Query>();
+                .AddQueryType<Query>()
+                .AddMutationType<Mutation>()
+                .AddSubscriptionType<Subscription>()
+                .AddType<PlatformType>()
+                .AddType<CommandType>()
+                .AddFiltering()
+                .AddSorting()
+                .AddInMemorySubscriptions();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -43,12 +53,19 @@ namespace CommanderGQL
                 app.UseDeveloperExceptionPage();
             }
 
+            app.UseWebSockets();
+
             app.UseRouting();
 
             app.UseEndpoints(endpoints =>
             {
-               endpoints.MapGraphQL();
+                endpoints.MapGraphQL();
             });
+
+            app.UseGraphQLVoyager(new VoyagerOptions()
+            {
+                GraphQLEndPoint = "/graphql"
+            }, path: "/graphql-voyager");
         }
     }
 }
